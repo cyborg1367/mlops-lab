@@ -160,6 +160,7 @@ def main():
             skops_trusted_types=[
                 "sklearn.tree._tree.Tree"
             ],
+            pip_requirements="requirements-model.txt",
         )
 
         print("\nMLflow run completed.")

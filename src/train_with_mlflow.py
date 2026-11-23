@@ -1,4 +1,3 @@
-
 import json
 import tempfile
 from pathlib import Path
@@ -21,7 +20,6 @@ from sklearn.metrics import (
     confusion_matrix,
     ConfusionMatrixDisplay,
 )
-
 
 TRACKING_URI = "http://127.0.0.1:5000"
 EXPERIMENT_NAME = "breast-cancer-classification"
@@ -101,11 +99,8 @@ def main():
         f"rf-n{params['n_estimators']}"
         f"-depth{params['max_depth']}"
     )
-    
-    with mlflow.start_run(
-        run_name=run_name
-    ) as run:
 
+    with mlflow.start_run(run_name=run_name) as run:
         # Log hyperparameters
         mlflow.log_params(params)
 
@@ -168,6 +163,7 @@ def main():
             skops_trusted_types=[
                 "sklearn.tree._tree.Tree"
             ],
+            pip_requirements="requirements-model.txt",
         )
 
         print("\nMLflow run completed.")
