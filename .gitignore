@@ -5,5 +5,7 @@ __pycache__/
 
 mlruns/
 mlflow.db
+mlartifacts/
+
 
 .env
