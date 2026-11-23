@@ -97,8 +97,13 @@ def main():
     )
 
     # 6. Start an MLflow run and log everything
+    run_name = (
+        f"rf-n{params['n_estimators']}"
+        f"-depth{params['max_depth']}"
+    )
+    
     with mlflow.start_run(
-        run_name="random-forest-baseline"
+        run_name=run_name
     ) as run:
 
         # Log hyperparameters

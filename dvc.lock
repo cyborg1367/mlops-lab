@@ -54,8 +54,8 @@ stages:
       size: 946889
     - path: src/evaluate_model.py
       hash: md5
-      md5: a2cb1937339fd6db495962d460b9d1a3
-      size: 2601
+      md5: 7d20e2d9c2b7ecf48a7d8bd28c2e99c0
+      size: 4618
     outs:
     - path: reports/confusion_matrix.png
       hash: md5
