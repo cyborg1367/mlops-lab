@@ -1,3 +1,6 @@
+
+import argparse
+
 import mlflow
 import mlflow.pyfunc
 
@@ -7,11 +10,33 @@ import pandas as pd
 
 TRACKING_URI = "http://127.0.0.1:5000"
 MODEL_NAME = "breast-cancer-classifier"
-MODEL_ALIAS = "champion"
-MODEL_VERSION = "1"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Manage MLflow model registry aliases."
+    )
+
+    parser.add_argument(
+        "--version",
+        type=int,
+        required=True,
+        help="Model version to assign to the alias.",
+    )
+
+    parser.add_argument(
+        "--alias",
+        type=str,
+        default="champion",
+        help="Alias to assign. Default: champion",
+    )
+
+    return parser.parse_args()
 
 
 def main():
+    args = parse_args()
+
     # 1. Connect to MLflow
     mlflow.set_tracking_uri(TRACKING_URI)
 
@@ -19,35 +44,56 @@ def main():
         tracking_uri=TRACKING_URI
     )
 
-    # 2. Assign champion alias to version 1
+    # 2. Validate that the requested version exists
+    version = client.get_model_version(
+        name=MODEL_NAME,
+        version=str(args.version),
+    )
+
+    print(
+        f"Found model version: {version.version}"
+    )
+
+    # 3. Assign alias
     client.set_registered_model_alias(
         name=MODEL_NAME,
-        alias=MODEL_ALIAS,
-        version=MODEL_VERSION,
+        alias=args.alias,
+        version=str(args.version),
     )
 
-    print("Alias assigned successfully.")
+    print(
+        f"\nAlias '{args.alias}' assigned "
+        f"to version {args.version}."
+    )
 
-    # 3. Retrieve model version using alias
-    model_version = client.get_model_version_by_alias(
+    # 4. Verify alias
+    selected_version = client.get_model_version_by_alias(
         name=MODEL_NAME,
-        alias=MODEL_ALIAS,
+        alias=args.alias,
     )
 
-    print(f"Model name: {model_version.name}")
-    print(f"Model version: {model_version.version}")
-    print(f"Model alias: {MODEL_ALIAS}")
+    print("\nRegistry status:")
+    print(f"Model: {selected_version.name}")
+    print(f"Version: {selected_version.version}")
+    print(f"Alias: {args.alias}")
 
-    # 4. Load model using alias
-    model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
+    # 5. Load model through alias
+    model_uri = (
+        f"models:/{MODEL_NAME}@{args.alias}"
+    )
 
     model = mlflow.pyfunc.load_model(model_uri)
 
-    # 5. Test inference
-    test_df = pd.read_csv("data/processed/test.csv")
+    # 6. Test inference
+    test_df = pd.read_csv(
+        "data/processed/test.csv"
+    )
+
     X_test = test_df.drop(columns=["target"])
 
-    predictions = model.predict(X_test.head(5))
+    predictions = model.predict(
+        X_test.head(5)
+    )
 
     print("\nPredictions:")
     print(predictions)
