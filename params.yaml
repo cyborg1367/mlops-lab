@@ -1,5 +1,5 @@
 
 train:
   random_state: 42
-  n_estimators: 300
-  max_depth: 8
+  n_estimators: 400
+  max_depth: 5

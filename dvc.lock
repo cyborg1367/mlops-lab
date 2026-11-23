@@ -33,14 +33,14 @@ stages:
       size: 1139
     params:
       params.yaml:
-        train.max_depth: 8
-        train.n_estimators: 300
+        train.max_depth: 5
+        train.n_estimators: 400
         train.random_state: 42
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: 758c70ab60b400737d9fba03725f4f4d
-      size: 946889
+      md5: b50679155e8dfdd87e48f989ccc5c2a4
+      size: 1052009
   evaluate_model:
     cmd: uv run python src/evaluate_model.py
     deps:
@@ -50,8 +50,8 @@ stages:
       size: 24745
     - path: models/model.joblib
       hash: md5
-      md5: 758c70ab60b400737d9fba03725f4f4d
-      size: 946889
+      md5: b50679155e8dfdd87e48f989ccc5c2a4
+      size: 1052009
     - path: src/evaluate_model.py
       hash: md5
       md5: 7d20e2d9c2b7ecf48a7d8bd28c2e99c0
@@ -59,9 +59,9 @@ stages:
     outs:
     - path: reports/confusion_matrix.png
       hash: md5
-      md5: eb245d5817632639faac66ecdf3076ef
-      size: 36750
+      md5: 982711d2432055829f739df4ee6cf525
+      size: 36615
     - path: reports/metrics.json
       hash: md5
-      md5: 6992d9607a7a1f61b5e84ca8e71b7cd7
-      size: 306
+      md5: c67885512867d86ac5a4d69b53f835e3
+      size: 307
