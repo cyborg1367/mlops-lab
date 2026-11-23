@@ -18,3 +18,14 @@ stages:
     - train.random_state
     outs:
     - models/model.joblib
+  evaluate_model:
+    cmd: uv run python src/evaluate_model.py
+    deps:
+    - data/processed/test.csv
+    - models/model.joblib
+    - src/evaluate_model.py
+    outs:
+    - reports/confusion_matrix.png
+    metrics:
+    - reports/metrics.json:
+        cache: false

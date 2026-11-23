@@ -41,3 +41,27 @@ stages:
       hash: md5
       md5: 758c70ab60b400737d9fba03725f4f4d
       size: 946889
+  evaluate_model:
+    cmd: uv run python src/evaluate_model.py
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 1e2db2663433c2122508d0234de2074c
+      size: 24745
+    - path: models/model.joblib
+      hash: md5
+      md5: 758c70ab60b400737d9fba03725f4f4d
+      size: 946889
+    - path: src/evaluate_model.py
+      hash: md5
+      md5: a2cb1937339fd6db495962d460b9d1a3
+      size: 2601
+    outs:
+    - path: reports/confusion_matrix.png
+      hash: md5
+      md5: eb245d5817632639faac66ecdf3076ef
+      size: 36750
+    - path: reports/metrics.json
+      hash: md5
+      md5: 6992d9607a7a1f61b5e84ca8e71b7cd7
+      size: 306
