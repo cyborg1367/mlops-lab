@@ -36,40 +36,70 @@ def main():
     mlflow.set_tracking_uri(TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
 
-    # 3. Load test data
+    # 2. Load Development Set for model signature and input example
+    development_df = pd.read_csv(
+        "data/processed/development.csv"
+    )
+
+    X_development = development_df.drop(columns=["target"])
+
+    # 3. Load independent Test Set
     test_df = pd.read_csv("data/processed/test.csv")
 
     X_test = test_df.drop(columns=["target"])
     y_test = test_df["target"]
 
-    # 4. Load trained model
+    # 4. Load final trained model
     model_path = Path("models/model.joblib")
     model = joblib.load(model_path)
 
-    # 5. Generate predictions
+    # 5. Generate predictions on Test Set
     y_pred = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
 
-    # 6. Calculate metrics
+    # 6. Calculate evaluation metrics
     metrics = {
-        "accuracy": float(accuracy_score(y_test, y_pred)),
+        "accuracy": float(
+            accuracy_score(y_test, y_pred)
+        ),
         "precision": float(
-            precision_score(y_test, y_pred, pos_label=1, zero_division=0)
+            precision_score(
+                y_test,
+                y_pred,
+                pos_label=1,
+                zero_division=0,
+            )
         ),
         "recall": float(
-            recall_score(y_test, y_pred, pos_label=1, zero_division=0)
+            recall_score(
+                y_test,
+                y_pred,
+                pos_label=1,
+                zero_division=0,
+            )
         ),
         "f1_score": float(
-            f1_score(y_test, y_pred, pos_label=1, zero_division=0)
+            f1_score(
+                y_test,
+                y_pred,
+                pos_label=1,
+                zero_division=0,
+            )
         ),
-        "roc_auc": float(roc_auc_score(y_test, y_proba)),
+        "roc_auc": float(
+            roc_auc_score(y_test, y_proba)
+        ),
     }
 
     # 7. Calculate confusion matrix
     # Class 0 = Benign
     # Class 1 = Malignant
 
-    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+    cm = confusion_matrix(
+        y_test,
+        y_pred,
+        labels=[0, 1],
+    )
 
     tn, fp, fn, tp = cm.ravel()
 
@@ -97,31 +127,42 @@ def main():
     )
 
     display.plot(cmap="Blues", values_format="d")
-    plt.title("Random Forest - Confusion Matrix")
+    plt.title("Random Forest - Final Test Evaluation")
     plt.tight_layout()
 
     figure_path = reports_dir / "confusion_matrix.png"
+
     plt.savefig(figure_path, dpi=150)
     plt.close()
 
+    # 9. Prepare model metadata using Development Set
+    y_development_pred = model.predict(
+        X_development.head(5)
+    )
+
+    signature = infer_signature(
+        X_development.head(5),
+        y_development_pred,
+    )
+
+    input_example = X_development.head(5)
+
     model_params = model.get_params()
 
-    # 9. Create MLflow run
     run_name = (
-        f"rf-n{model_params['n_estimators']}"
+        f"rf-final-n{model_params['n_estimators']}"
         f"-depth{model_params['max_depth']}"
     )
 
+    # 10. Log final evaluation and model to MLflow
     with mlflow.start_run(run_name=run_name) as run:
 
-        # Log hyperparameters
         mlflow.log_params({
             "n_estimators": model_params["n_estimators"],
-            "max_depth": model_params["max_depth"],
+            "max_depth": str(model_params["max_depth"]),
             "random_state": model_params["random_state"],
         })
 
-        # Log scalar metrics
         scalar_metrics = {
             key: value
             for key, value in metrics.items()
@@ -130,15 +171,15 @@ def main():
 
         mlflow.log_metrics(scalar_metrics)
 
-        # Log metadata
         mlflow.set_tags({
             "model_type": "RandomForestClassifier",
             "dataset": "Breast Cancer Wisconsin",
             "source": "DVC Pipeline",
             "dvc_stage": "evaluate_model",
+            "evaluation_strategy": "independent_holdout_test",
+            "positive_class": "malignant",
         })
 
-        # Log evaluation artifacts
         mlflow.log_artifact(
             str(figure_path),
             artifact_path="evaluation",
@@ -149,14 +190,11 @@ def main():
             "evaluation/metrics.json",
         )
 
-        # Log trained model
-        signature = infer_signature(X_test, y_pred)
-
         model_info = mlflow.sklearn.log_model(
             sk_model=model,
             name="random-forest-model",
             signature=signature,
-            input_example=X_test.head(5),
+            input_example=input_example,
             skops_trusted_types=[
                 "sklearn.tree._tree.Tree"
             ],
@@ -168,8 +206,8 @@ def main():
         print(f"Experiment ID: {run.info.experiment_id}")
         print(f"Model URI: {model_info.model_uri}")
 
-    # 10. Print evaluation results
-    print("\nModel evaluation completed.")
+    # 11. Print final evaluation results
+    print("\nFinal model evaluation completed.")
     print(f"Test samples: {len(y_test)}")
 
     print("\nEvaluation metrics:")

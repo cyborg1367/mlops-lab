@@ -3,9 +3,10 @@ import argparse
 
 import mlflow
 import mlflow.pyfunc
+import pandas as pd
 
 from mlflow import MlflowClient
-import pandas as pd
+from sklearn.datasets import load_breast_cancer
 
 
 TRACKING_URI = "http://127.0.0.1:5000"
@@ -14,21 +15,21 @@ MODEL_NAME = "breast-cancer-classifier"
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Manage MLflow model registry aliases."
+        description="Validate and promote an MLflow model version."
     )
 
     parser.add_argument(
         "--version",
         type=int,
         required=True,
-        help="Model version to assign to the alias.",
+        help="Registered model version to promote.",
     )
 
     parser.add_argument(
         "--alias",
         type=str,
         default="champion",
-        help="Alias to assign. Default: champion",
+        help="Alias to assign after successful validation.",
     )
 
     return parser.parse_args()
@@ -44,59 +45,89 @@ def main():
         tracking_uri=TRACKING_URI
     )
 
-    # 2. Validate that the requested version exists
+    # 2. Validate that the requested version exists and is READY
     version = client.get_model_version(
         name=MODEL_NAME,
         version=str(args.version),
     )
 
-    print(
-        f"Found model version: {version.version}"
+    if version.status != "READY":
+        raise RuntimeError(
+            f"Model version {args.version} is not READY."
+        )
+
+    print(f"Found model version: {version.version}")
+
+    # 3. Load the candidate version directly
+    model_uri = (
+        f"models:/{MODEL_NAME}/{args.version}"
     )
 
-    # 3. Assign alias
+    print(f"\nLoading candidate model: {model_uri}")
+
+    candidate_model = mlflow.pyfunc.load_model(
+        model_uri
+    )
+
+    # 4. Generate synthetic smoke-test input
+    dataset = load_breast_cancer()
+
+    input_df = pd.DataFrame(
+        dataset.data[:5],
+        columns=dataset.feature_names,
+    )
+
+    # 5. Run smoke test
+    predictions = candidate_model.predict(input_df)
+
+    if len(predictions) != len(input_df):
+        raise RuntimeError(
+            "Smoke test failed: unexpected prediction count."
+        )
+
+    if not set(predictions).issubset({0, 1}):
+        raise RuntimeError(
+            "Smoke test failed: invalid prediction values."
+        )
+
+    print("\nSmoke test passed.")
+    print(f"Candidate version: {args.version}")
+    print(f"Predictions: {predictions}")
+
+    # 6. Promote candidate only after successful smoke test
+    print(
+        f"\nAssigning alias '{args.alias}' "
+        f"to version {args.version}..."
+    )
+
     client.set_registered_model_alias(
         name=MODEL_NAME,
         alias=args.alias,
         version=str(args.version),
     )
 
-    print(
-        f"\nAlias '{args.alias}' assigned "
-        f"to version {args.version}."
-    )
-
-    # 4. Verify alias
+    # 7. Verify alias assignment
     selected_version = client.get_model_version_by_alias(
         name=MODEL_NAME,
         alias=args.alias,
     )
+
+    if selected_version.version != str(args.version):
+        raise RuntimeError(
+            "Alias verification failed: "
+            f"expected version {args.version}, "
+            f"got version {selected_version.version}."
+        )
 
     print("\nRegistry status:")
     print(f"Model: {selected_version.name}")
     print(f"Version: {selected_version.version}")
     print(f"Alias: {args.alias}")
 
-    # 5. Load model through alias
-    model_uri = (
-        f"models:/{MODEL_NAME}@{args.alias}"
+    print(
+        f"\nAlias '{args.alias}' successfully points "
+        f"to version {selected_version.version}."
     )
-
-    model = mlflow.pyfunc.load_model(model_uri)
-
-    # 6. Test inference
-    test_df = pd.read_csv(
-        "data/processed/test.csv"
-    )
-
-    X_test = test_df.drop(columns=["target"])
-
-    predictions = model.predict(
-        X_test.head(5)
-    )
-
-    print("\nPredictions:")
-    print(predictions)
 
 
 if __name__ == "__main__":

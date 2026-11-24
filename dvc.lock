@@ -9,59 +9,113 @@ stages:
       size: 121385
     - path: src/split_data.py
       hash: md5
-      md5: bc95f3c8019957fdc8492fb59f29be61
-      size: 896
+      md5: 4bb37794f88b118d40c8322f8870baae
+      size: 1525
+    params:
+      params.yaml:
+        data.random_state: 42
+        data.test_size: 0.2
     outs:
+    - path: data/processed/development.csv
+      hash: md5
+      md5: 59736a725c434ecddb3a7717480690e2
+      size: 97166
     - path: data/processed/test.csv
       hash: md5
-      md5: 1e2db2663433c2122508d0234de2074c
-      size: 24745
-    - path: data/processed/train.csv
-      hash: md5
-      md5: 8be8abe706b5ba34fbc2ff768915391d
-      size: 97132
+      md5: d354a10f1cad89595d47b37cf86f118a
+      size: 24711
   train_model:
     cmd: uv run python src/train_model.py
     deps:
-    - path: data/processed/train.csv
+    - path: data/processed/development.csv
       hash: md5
-      md5: 8be8abe706b5ba34fbc2ff768915391d
-      size: 97132
+      md5: 59736a725c434ecddb3a7717480690e2
+      size: 97166
+    - path: reports/cv/best_params.json
+      hash: md5
+      md5: 954cca130a983278e57dd0581973e4a2
+      size: 718
     - path: src/train_model.py
       hash: md5
-      md5: 4bdffc1bbf0d4f49b2659b95c3aa4c73
-      size: 1139
+      md5: b135896346ad4cba43d89c21e15278ba
+      size: 1507
     params:
       params.yaml:
-        train.max_depth: 5
-        train.n_estimators: 400
         train.random_state: 42
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: b50679155e8dfdd87e48f989ccc5c2a4
-      size: 1052009
+      md5: 668b5c619bfc1582b021385eb9dacf1e
+      size: 567545
   evaluate_model:
     cmd: uv run python src/evaluate_model.py
     deps:
+    - path: data/processed/development.csv
+      hash: md5
+      md5: 59736a725c434ecddb3a7717480690e2
+      size: 97166
     - path: data/processed/test.csv
       hash: md5
-      md5: 1e2db2663433c2122508d0234de2074c
-      size: 24745
+      md5: d354a10f1cad89595d47b37cf86f118a
+      size: 24711
     - path: models/model.joblib
       hash: md5
-      md5: b50679155e8dfdd87e48f989ccc5c2a4
-      size: 1052009
+      md5: 668b5c619bfc1582b021385eb9dacf1e
+      size: 567545
+    - path: requirements-model.txt
+      hash: md5
+      md5: 00e3bdca3316a7af30f32f86acf231df
+      size: 122
     - path: src/evaluate_model.py
       hash: md5
-      md5: 7d20e2d9c2b7ecf48a7d8bd28c2e99c0
-      size: 4618
+      md5: f8ca999b5bf2663f00acbbad9c14e3a5
+      size: 5469
     outs:
     - path: reports/confusion_matrix.png
       hash: md5
-      md5: 982711d2432055829f739df4ee6cf525
-      size: 36615
+      md5: 1b9be4a81e737fdb6dc2146e98d4eac1
+      size: 38245
     - path: reports/metrics.json
       hash: md5
-      md5: c67885512867d86ac5a4d69b53f835e3
-      size: 307
+      md5: 8e3d9cb1f948ad6074fa7a2314add511
+      size: 292
+  cross_validate:
+    cmd: uv run python src/cross_validate.py
+    deps:
+    - path: data/processed/development.csv
+      hash: md5
+      md5: 59736a725c434ecddb3a7717480690e2
+      size: 97166
+    - path: src/cross_validate.py
+      hash: md5
+      md5: 09f81342e7a156224ec80ed55ebfd367
+      size: 4966
+    params:
+      params.yaml:
+        cv.n_splits: 5
+        cv.param_grid:
+          n_estimators:
+          - 200
+          - 400
+          max_depth:
+          -
+          - 5
+          - 10
+          min_samples_split:
+          - 2
+          - 5
+          min_samples_leaf:
+          - 1
+          - 2
+        cv.random_state: 42
+        cv.selection_metric: recall
+        train.random_state: 42
+    outs:
+    - path: reports/cv/best_params.json
+      hash: md5
+      md5: 954cca130a983278e57dd0581973e4a2
+      size: 718
+    - path: reports/cv/cv_results.csv
+      hash: md5
+      md5: 9a83fc52b35b28cb2d113bcf563f9134
+      size: 20414
